@@ -204,3 +204,4 @@ pytest eval1/tests -q
 - [技术设计：图谱建模 / 路径生成 / 评分方法](docs/TECHNICAL_DESIGN.md)
 - [系统说明：建图 / 路径 / 评测 / 数据存放](docs/EVAL1_SYSTEM_GUIDE.md)
 - [Layer1 节点类型说明](docs/LAYER1_SCENE.md)
+- [CallEval设计文档](docs/CallEval：复杂指令下的多轮对话评测系统.pdf)
