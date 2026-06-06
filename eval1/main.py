@@ -13,10 +13,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from eval1.api.read_routes import router as read_router
+
 _EVAL1_ROOT = pathlib.Path(__file__).resolve().parent
 _DIST = _EVAL1_ROOT.parent / "frontend" / "dist"
 
-_api_loaded = False
+_write_loaded = False
 _spa_fallback_registered = False
 
 
@@ -38,7 +40,6 @@ def _configure_logging() -> None:
 
 
 def _register_spa_fallback() -> None:
-    """Register SPA catch-all AFTER /api routes so API is not shadowed."""
     global _spa_fallback_registered
     if _spa_fallback_registered or not _DIST.exists():
         return
@@ -53,17 +54,15 @@ def _register_spa_fallback() -> None:
     _spa_fallback_registered = True
 
 
-def _ensure_api_routes() -> None:
-    """Load heavy API deps (langgraph, etc.) on first use, not at process start."""
-    global _api_loaded
-    if _api_loaded:
+def _ensure_write_routes() -> None:
+    global _write_loaded
+    if _write_loaded:
         return
-    from eval1.api.routes import router as eval1_router
+    from eval1.api.write_routes import router as write_router
 
-    app.include_router(eval1_router, prefix="/api/eval1")
-    _register_spa_fallback()
-    _api_loaded = True
-    logging.getLogger("eval1.main").info("Eval1 API routes loaded — /api/eval1")
+    app.include_router(write_router, prefix="/api/eval1")
+    _write_loaded = True
+    logging.getLogger("eval1.main").info("Eval1 write API loaded (pipeline/upload)")
 
 
 @asynccontextmanager
@@ -71,9 +70,7 @@ async def lifespan(app: FastAPI):
     _configure_logging()
     for sub in ("outputs", "data/uploads"):
         (_EVAL1_ROOT / sub).mkdir(parents=True, exist_ok=True)
-    logging.getLogger("eval1.main").info("Loading Eval1 API routes (sync)…")
-    await asyncio.to_thread(_ensure_api_routes)
-    logging.getLogger("eval1.main").info("Eval1 API ready")
+    logging.getLogger("eval1.main").info("Eval1 read API online — no heavy imports at boot")
     yield
 
 
@@ -92,12 +89,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Read-only API first (datasets / layer1 / cached layer2)
+app.include_router(read_router, prefix="/api/eval1")
+_register_spa_fallback()
+
 
 @app.middleware("http")
-async def _lazy_api_middleware(request, call_next):
+async def _lazy_write_middleware(request, call_next):
     path = request.url.path
-    if path.startswith("/api/eval1") and not _api_loaded:
-        await asyncio.to_thread(_ensure_api_routes)
+    needs_write = path.startswith("/api/eval1") and request.method in ("POST", "PUT", "PATCH")
+    if needs_write and not _write_loaded:
+        await asyncio.to_thread(_ensure_write_routes)
     return await call_next(request)
 
 
@@ -113,11 +115,10 @@ def root_healthz():
 
 @app.get("/api/eval1/deploy-status")
 def deploy_status():
-    """Lightweight diagnostics — always available, no lazy import."""
     out_dir = _EVAL1_ROOT / "outputs"
     data_xlsx = _EVAL1_ROOT / "data" / "data.xlsx"
     return {
-        "api_loaded": _api_loaded,
+        "write_api_loaded": _write_loaded,
         "data_xlsx_exists": data_xlsx.is_file(),
         "report_files": sorted(p.name for p in out_dir.glob("eval1_reports_*.json")),
         "frontend_dist": _DIST.is_dir(),
@@ -126,14 +127,12 @@ def deploy_status():
 
 @app.get("/")
 def root():
-    """Respond on / even when frontend dist is missing (Railway healthcheck)."""
     index = _DIST / "index.html"
     if index.is_file():
         return FileResponse(str(index))
     return {"status": "ok", "service": "Eval1", "api": "/api/eval1", "docs": "/docs"}
 
 
-# Static assets only — SPA catch-all is registered after /api in _register_spa_fallback()
 if _DIST.exists():
     _assets = _DIST / "assets"
     if _assets.exists():

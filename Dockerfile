@@ -24,4 +24,4 @@ RUN mkdir -p eval1/outputs eval1/data/uploads && chmod +x scripts/railway_start.
 
 EXPOSE 8000
 
-CMD ["sh", "scripts/railway_start.sh"]
+CMD ["sh", "-c", "python3 -m uvicorn eval1.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

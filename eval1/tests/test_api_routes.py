@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 def test_eval1_routes_no_eval_system_dependency():
-    routes = importlib.import_module("eval1.api.routes")
+    routes = importlib.import_module("eval1.api.read_routes")
     src = Path(routes.__file__).read_text(encoding="utf-8")
     assert "eval_system" not in src
     assert "def datasets" in src
