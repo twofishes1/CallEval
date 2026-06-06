@@ -71,8 +71,9 @@ async def lifespan(app: FastAPI):
     _configure_logging()
     for sub in ("outputs", "data/uploads"):
         (_EVAL1_ROOT / sub).mkdir(parents=True, exist_ok=True)
-    logging.getLogger("eval1.main").info("Eval1 ready — healthcheck can pass; API loading in background")
-    asyncio.create_task(asyncio.to_thread(_ensure_api_routes))
+    logging.getLogger("eval1.main").info("Loading Eval1 API routes (sync)…")
+    await asyncio.to_thread(_ensure_api_routes)
+    logging.getLogger("eval1.main").info("Eval1 API ready")
     yield
 
 
@@ -108,6 +109,19 @@ def health():
 @app.get("/healthz")
 def root_healthz():
     return {"ok": True}
+
+
+@app.get("/api/eval1/deploy-status")
+def deploy_status():
+    """Lightweight diagnostics — always available, no lazy import."""
+    out_dir = _EVAL1_ROOT / "outputs"
+    data_xlsx = _EVAL1_ROOT / "data" / "data.xlsx"
+    return {
+        "api_loaded": _api_loaded,
+        "data_xlsx_exists": data_xlsx.is_file(),
+        "report_files": sorted(p.name for p in out_dir.glob("eval1_reports_*.json")),
+        "frontend_dist": _DIST.is_dir(),
+    }
 
 
 @app.get("/")

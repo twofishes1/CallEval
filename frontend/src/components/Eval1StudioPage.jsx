@@ -41,6 +41,7 @@ export default function Eval1StudioPage() {
   const [botProvider, setBotProvider] = useState("qwen");
   const [reportProviders, setReportProviders] = useState([]);
   const [runLoadError, setRunLoadError] = useState("");
+  const [datasetLoadError, setDatasetLoadError] = useState("");
   const fileInputRef = useRef(null);
 
   const pipelineOpts = {
@@ -51,11 +52,14 @@ export default function Eval1StudioPage() {
   };
 
   const loadDatasets = useCallback(async () => {
+    setDatasetLoadError("");
     try {
       const rows = await listEval1Datasets();
       setDatasets(Array.isArray(rows) ? rows : []);
       return rows;
-    } catch {
+    } catch (e) {
+      setDatasets([]);
+      setDatasetLoadError(e?.message || String(e));
       return [];
     }
   }, []);
@@ -329,6 +333,14 @@ export default function Eval1StudioPage() {
           </button>
         </div>
       </header>
+
+      {datasetLoadError ? (
+        <div className="studio-pipeline-banner error" role="alert">
+          <p className="studio-pipeline-error">
+            无法加载数据集：{datasetLoadError}。请确认后端已启动，或访问 /api/eval1/deploy-status 检查部署状态。
+          </p>
+        </div>
+      ) : null}
 
       {(pipelineStep || pipelineError) && (
         <div

@@ -39,7 +39,11 @@ async function getJson(url) {
 }
 
 async function parseJsonResponse(r) {
-  const data = await r.json().catch(() => ({}));
+  const text = await r.text();
+  if (text.trimStart().startsWith("<")) {
+    throw new Error("后端返回了 HTML 而非 JSON，API 路由可能未生效，请重新部署最新代码");
+  }
+  const data = text ? JSON.parse(text) : {};
   if (!r.ok) {
     const msg = data?.detail || data?.message || r.statusText || "请求失败";
     throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
