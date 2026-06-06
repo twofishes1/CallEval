@@ -4,28 +4,10 @@ import { jsPDF } from "jspdf";
 const MARGIN_MM = 12;
 const SECTION_GAP_MM = 3;
 
-/** Selectors hidden during capture so Recharts / UI charts are not painted twice. */
-const HIDE_DURING_CAPTURE = [".layer3-body", ".layer3-toolbar"];
-
 function waitForPaint() {
   return new Promise((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(resolve));
   });
-}
-
-function hideElements(selectors) {
-  const restored = [];
-  for (const selector of selectors) {
-    document.querySelectorAll(selector).forEach((el) => {
-      restored.push({ el, visibility: el.style.visibility });
-      el.style.visibility = "hidden";
-    });
-  }
-  return () => {
-    for (const { el, visibility } of restored) {
-      el.style.visibility = visibility;
-    }
-  };
 }
 
 async function withCaptureEnvironment(stack, fn) {
@@ -33,13 +15,11 @@ async function withCaptureEnvironment(stack, fn) {
   if (stack) {
     stack.classList.add("eval-report-pdf-capturing");
   }
-  const restoreHidden = hideElements(HIDE_DURING_CAPTURE);
   await waitForPaint();
   await new Promise((r) => setTimeout(r, 160));
   try {
     return await fn();
   } finally {
-    restoreHidden();
     if (stack) {
       stack.classList.remove("eval-report-pdf-capturing");
     }
@@ -123,6 +103,12 @@ async function captureElement(el, scale = 2) {
     windowHeight: el.scrollHeight,
     scrollX: 0,
     scrollY: 0,
+    onclone: (clonedDoc) => {
+      clonedDoc.querySelectorAll(".eval-report-pdf-stack").forEach((node) => {
+        node.style.left = "0";
+        node.style.opacity = "1";
+      });
+    },
   });
   if (canvas.height < 2) {
     const label = el.querySelector("h2, h1")?.textContent?.trim() || "unknown section";

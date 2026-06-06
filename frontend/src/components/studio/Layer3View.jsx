@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   DimensionRadar,
   GradeBar,
@@ -188,6 +189,18 @@ export default function Layer3View({ data, loading, datasetName, botProvider = "
 
   return (
     <div className="layer-view layer3-view">
+      {exporting
+        ? createPortal(
+            <div className="eval-report-pdf-overlay" role="status" aria-live="polite" aria-busy="true">
+              <div className="eval-report-pdf-overlay-card">
+                <span className="eval-report-pdf-overlay-spinner" aria-hidden="true" />
+                <p className="eval-report-pdf-overlay-title">正在生成评测报告 PDF…</p>
+                <p className="eval-report-pdf-overlay-hint">请勿关闭页面，完成后将自动下载</p>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
       <div className="layer3-toolbar">
         <span className="layer3-toolbar-hint">
           <span className={`layer2-bot-badge ${activeBot}`}>{botLabel}</span>

@@ -1573,15 +1573,66 @@
 }
 
 .eval-report-pdf-stack.eval-report-pdf-capturing {
-  left: 0;
-  z-index: 99999;
+  /* Stay off-screen during html2canvas capture — moving to left:0 flashes a narrow column in the UI */
+  left: -10000px;
   opacity: 1;
+  z-index: -1;
   pointer-events: none;
 }
 
-body.eval-report-pdf-exporting .layer3-body,
-body.eval-report-pdf-exporting .layer3-toolbar {
-  visibility: hidden !important;
+.eval-report-pdf-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(241, 245, 249, 0.88);
+  backdrop-filter: blur(4px);
+}
+
+.eval-report-pdf-overlay-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 360px;
+  padding: 28px 32px;
+  text-align: center;
+  background: #fff;
+  border: 1px solid var(--studio-border);
+  border-radius: 14px;
+  box-shadow: var(--studio-shadow);
+}
+
+.eval-report-pdf-overlay-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e2e8f0;
+  border-top-color: var(--studio-accent);
+  border-radius: 50%;
+  animation: eval-report-pdf-spin 0.75s linear infinite;
+}
+
+@keyframes eval-report-pdf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.eval-report-pdf-overlay-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--studio-text);
+}
+
+.eval-report-pdf-overlay-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--studio-muted);
+  line-height: 1.5;
 }
 
 .eval-report-pdf-source,
