@@ -47,9 +47,15 @@ def _configure_logging() -> None:
         pkg.addHandler(handler)
 
 
+_EVAL1_ROOT = pathlib.Path(__file__).resolve().parent
+_DIST = _EVAL1_ROOT.parent / "frontend" / "dist"
+
+
 @app.on_event("startup")
 def on_startup() -> None:
     _configure_logging()
+    for sub in ("outputs", "data/uploads"):
+        (_EVAL1_ROOT / sub).mkdir(parents=True, exist_ok=True)
     logging.getLogger("eval1.main").info("Eval1 API 已启动 — 前缀 /api/eval1")
 
 
@@ -63,16 +69,20 @@ def root_healthz():
     return {"ok": True}
 
 
-# Serve frontend static files (must be registered after all API routes)
-_DIST = pathlib.Path(__file__).parent.parent / "frontend" / "dist"
+@app.get("/")
+def root():
+    """Respond on / even when frontend dist is missing (Railway healthcheck)."""
+    index = _DIST / "index.html"
+    if index.is_file():
+        return FileResponse(str(index))
+    return {"status": "ok", "service": "Eval1", "api": "/api/eval1", "docs": "/docs"}
+
+
+# Serve frontend static assets and SPA fallback
 if _DIST.exists():
     _assets = _DIST / "assets"
     if _assets.exists():
         app.mount("/assets", StaticFiles(directory=str(_assets)), name="assets")
-
-    @app.get("/")
-    def serve_index():
-        return FileResponse(str(_DIST / "index.html"))
 
     @app.get("/{full_path:path}")
     def serve_spa(full_path: str):

@@ -17,10 +17,11 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY eval1/ ./eval1/
+COPY scripts/railway_start.sh ./scripts/railway_start.sh
 COPY --from=frontend-build /app/frontend/dist ./frontend/dist
 
-RUN mkdir -p eval1/outputs eval1/data/uploads
+RUN mkdir -p eval1/outputs eval1/data/uploads && chmod +x scripts/railway_start.sh
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "uvicorn eval1.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "scripts/railway_start.sh"]

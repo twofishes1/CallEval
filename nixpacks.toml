@@ -11,4 +11,4 @@ cmds = [
 ]
 
 [start]
-cmd = "uvicorn eval1.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+cmd = "sh scripts/railway_start.sh"
