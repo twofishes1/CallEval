@@ -2,32 +2,21 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import pathlib
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from eval1.api.routes import router as eval1_router
+_EVAL1_ROOT = pathlib.Path(__file__).resolve().parent
+_DIST = _EVAL1_ROOT.parent / "frontend" / "dist"
 
-app = FastAPI(
-    title="Eval1 Multi-turn Evaluation",
-    description="复杂指令多轮对话评测：Layer1 解析 → Layer2 仿真 → Layer3 评分",
-    version="1.0.0",
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.include_router(eval1_router, prefix="/api/eval1")
+_api_loaded = False
 
 
 def _configure_logging() -> None:
@@ -47,16 +36,49 @@ def _configure_logging() -> None:
         pkg.addHandler(handler)
 
 
-_EVAL1_ROOT = pathlib.Path(__file__).resolve().parent
-_DIST = _EVAL1_ROOT.parent / "frontend" / "dist"
+def _ensure_api_routes() -> None:
+    """Load heavy API deps (langgraph, etc.) on first use, not at process start."""
+    global _api_loaded
+    if _api_loaded:
+        return
+    from eval1.api.routes import router as eval1_router
+
+    app.include_router(eval1_router, prefix="/api/eval1")
+    _api_loaded = True
+    logging.getLogger("eval1.main").info("Eval1 API routes loaded — /api/eval1")
 
 
-@app.on_event("startup")
-def on_startup() -> None:
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     _configure_logging()
     for sub in ("outputs", "data/uploads"):
         (_EVAL1_ROOT / sub).mkdir(parents=True, exist_ok=True)
-    logging.getLogger("eval1.main").info("Eval1 API 已启动 — 前缀 /api/eval1")
+    logging.getLogger("eval1.main").info("Eval1 ready — healthcheck can pass; API loading in background")
+    asyncio.create_task(asyncio.to_thread(_ensure_api_routes))
+    yield
+
+
+app = FastAPI(
+    title="Eval1 Multi-turn Evaluation",
+    description="复杂指令多轮对话评测：Layer1 解析 → Layer2 仿真 → Layer3 评分",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.middleware("http")
+async def _lazy_api_middleware(request, call_next):
+    if request.url.path.startswith("/api/eval1") and not _api_loaded:
+        await asyncio.to_thread(_ensure_api_routes)
+    return await call_next(request)
 
 
 @app.get("/health")
