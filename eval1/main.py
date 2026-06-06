@@ -17,6 +17,7 @@ _EVAL1_ROOT = pathlib.Path(__file__).resolve().parent
 _DIST = _EVAL1_ROOT.parent / "frontend" / "dist"
 
 _api_loaded = False
+_spa_fallback_registered = False
 
 
 def _configure_logging() -> None:
@@ -36,6 +37,22 @@ def _configure_logging() -> None:
         pkg.addHandler(handler)
 
 
+def _register_spa_fallback() -> None:
+    """Register SPA catch-all AFTER /api routes so API is not shadowed."""
+    global _spa_fallback_registered
+    if _spa_fallback_registered or not _DIST.exists():
+        return
+
+    @app.get("/{full_path:path}")
+    def serve_spa(full_path: str):
+        candidate = _DIST / full_path
+        if candidate.exists() and candidate.is_file():
+            return FileResponse(str(candidate))
+        return FileResponse(str(_DIST / "index.html"))
+
+    _spa_fallback_registered = True
+
+
 def _ensure_api_routes() -> None:
     """Load heavy API deps (langgraph, etc.) on first use, not at process start."""
     global _api_loaded
@@ -44,6 +61,7 @@ def _ensure_api_routes() -> None:
     from eval1.api.routes import router as eval1_router
 
     app.include_router(eval1_router, prefix="/api/eval1")
+    _register_spa_fallback()
     _api_loaded = True
     logging.getLogger("eval1.main").info("Eval1 API routes loaded — /api/eval1")
 
@@ -76,7 +94,8 @@ app.add_middleware(
 
 @app.middleware("http")
 async def _lazy_api_middleware(request, call_next):
-    if request.url.path.startswith("/api/eval1") and not _api_loaded:
+    path = request.url.path
+    if path.startswith("/api/eval1") and not _api_loaded:
         await asyncio.to_thread(_ensure_api_routes)
     return await call_next(request)
 
@@ -100,15 +119,8 @@ def root():
     return {"status": "ok", "service": "Eval1", "api": "/api/eval1", "docs": "/docs"}
 
 
-# Serve frontend static assets and SPA fallback
+# Static assets only — SPA catch-all is registered after /api in _register_spa_fallback()
 if _DIST.exists():
     _assets = _DIST / "assets"
     if _assets.exists():
         app.mount("/assets", StaticFiles(directory=str(_assets)), name="assets")
-
-    @app.get("/{full_path:path}")
-    def serve_spa(full_path: str):
-        candidate = _DIST / full_path
-        if candidate.exists() and candidate.is_file():
-            return FileResponse(str(candidate))
-        return FileResponse(str(_DIST / "index.html"))
