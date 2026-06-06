@@ -1,0 +1,33 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+
+# Secrets
+.env
+eval1/.env
+
+# Eval outputs (regenerate via run_eval)
+eval1/outputs/*.json
+eval1/outputs/backups/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local DB / temp
+*.db
+_tmp_*.txt
