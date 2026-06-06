@@ -1,0 +1,12 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+# Railpack fallback (when Dockerfile builder is not selected):
+buildCommand = "pip install -r requirements.txt && npm ci --prefix frontend && npm run build --prefix frontend && mkdir -p eval1/outputs eval1/data/uploads"
+
+[deploy]
+startCommand = "uvicorn eval1.main:app --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/health"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import logging
 import os
+import pathlib
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from eval1.api.routes import router as eval1_router
 
@@ -58,3 +61,22 @@ def health():
 @app.get("/healthz")
 def root_healthz():
     return {"ok": True}
+
+
+# Serve frontend static files (must be registered after all API routes)
+_DIST = pathlib.Path(__file__).parent.parent / "frontend" / "dist"
+if _DIST.exists():
+    _assets = _DIST / "assets"
+    if _assets.exists():
+        app.mount("/assets", StaticFiles(directory=str(_assets)), name="assets")
+
+    @app.get("/")
+    def serve_index():
+        return FileResponse(str(_DIST / "index.html"))
+
+    @app.get("/{full_path:path}")
+    def serve_spa(full_path: str):
+        candidate = _DIST / full_path
+        if candidate.exists() and candidate.is_file():
+            return FileResponse(str(candidate))
+        return FileResponse(str(_DIST / "index.html"))

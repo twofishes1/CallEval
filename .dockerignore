@@ -1,0 +1,17 @@
+.venv
+venv
+__pycache__
+.pytest_cache
+.mypy_cache
+.git
+.idea
+.vscode
+frontend/node_modules
+frontend/dist
+eval1/.env
+.env
+eval1/outputs/*.json
+eval1/outputs/backups
+tools
+*.md
+docs

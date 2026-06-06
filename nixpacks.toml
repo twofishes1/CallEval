@@ -1,0 +1,14 @@
+# Railway Railpack / Nixpacks: Python API + Node frontend build
+[phases.setup]
+nixPkgs = ["python312", "nodejs_20"]
+
+[phases.install]
+cmds = [
+  "pip install -r requirements.txt",
+  "npm ci --prefix frontend",
+  "npm run build --prefix frontend",
+  "mkdir -p eval1/outputs eval1/data/uploads",
+]
+
+[start]
+cmd = "uvicorn eval1.main:app --host 0.0.0.0 --port ${PORT:-8000}"
