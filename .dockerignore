@@ -10,7 +10,6 @@ frontend/node_modules
 frontend/dist
 eval1/.env
 .env
-eval1/outputs/*.json
 eval1/outputs/backups
 tools
 *.md

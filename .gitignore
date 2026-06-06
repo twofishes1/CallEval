@@ -11,8 +11,7 @@ __pycache__/
 .env
 eval1/.env
 
-# Eval outputs (regenerate via run_eval)
-eval1/outputs/*.json
+# Eval outputs — backups stay local; report JSONs are shipped for online demo
 eval1/outputs/backups/
 
 # Frontend
